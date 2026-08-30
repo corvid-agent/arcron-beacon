@@ -50,12 +50,19 @@ smart_contracts/beacon/contract.py   the Puya (Algorand Python) source — the w
 tests/test_beacon.py                 algorand-python-testing unit tests (mock chain)
 docs/                                GitHub Pages split-flap board (NOT DEPLOYED until appId > 0)
 docs/deploy.json                     {"appId": 0, ...} — the board's single source of config
-.github/workflows/pages.yml          publishes docs/ to Pages
-.github/workflows/compile.yml        CI: puyapy compile check + unit tests
 ```
 
 Source-only on purpose: no compiled artifacts are committed. They are
 generated at deploy time by the human doing the deploy.
+
+**Pending:** the GitHub Pages publish workflow is not committed yet — the
+token that wrote this repo lacks the `workflow` scope. Add
+`.github/workflows/pages.yml` copied from
+[corvid-agent/plod](https://github.com/corvid-agent/plod/blob/main/.github/workflows/pages.yml)
+when a suitably-scoped credential is available (see issue #1). A compile
+CI (pip install puyapy==5.10.1 + `puyapy smart_contracts/beacon/contract.py`
++ `pytest tests/`) is equally welcome; the commands below are exactly what
+it should run.
 
 ## Build & test locally
 
@@ -65,8 +72,9 @@ puyapy smart_contracts/beacon/contract.py   # compile check (artifacts not commi
 python -m pytest tests/                      # mock-chain unit tests
 ```
 
-Mock tests cannot prove keeper integration (inner calls, MBR) — that
-belongs to a LocalNet/TestNet e2e at deploy time.
+Verified at authoring time: compiles clean on puyapy 5.10.1; 5/5 unit
+tests pass. Mock tests cannot prove keeper integration (inner calls, MBR)
+— that belongs to a LocalNet/TestNet e2e at deploy time.
 
 ## How a human deploys this later
 
