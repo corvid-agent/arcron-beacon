@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BEACON — randomness board</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="crt" id="crt">
+    <header>
+      <h1>Beacon</h1>
+      <div class="meta" id="keeper-meta">TestNet · Arcron keeper</div>
+    </header>
+
+    <section class="status-row">
+      <div class="label">Status</div>
+      <div class="flaps big" id="status" aria-label="board status"></div>
+      <div class="meta" id="subhead">seeking</div>
+    </section>
+
+    <section class="board" id="board">
+      <div class="cell">
+        <div class="label">Latest round</div>
+        <div class="flaps" id="stat-round" aria-label="latest revealed round"></div>
+      </div>
+      <div class="cell">
+        <div class="label">Seed</div>
+        <div class="flaps" id="stat-seed" aria-label="revealed block seed"></div>
+      </div>
+      <div class="cell">
+        <div class="label">Reveals</div>
+        <div class="flaps" id="stat-reveals" aria-label="total seeds revealed"></div>
+      </div>
+      <div class="cell">
+        <div class="label">Next target</div>
+        <div class="flaps" id="stat-target" aria-label="committed future round"></div>
+      </div>
+      <div class="cell">
+        <div class="label">Chain round</div>
+        <div class="flaps" id="stat-chain" aria-label="chain last round"></div>
+      </div>
+      <div class="cell">
+        <div class="label">Keeper</div>
+        <div class="flaps" id="stat-keeper" aria-label="keeper app id"></div>
+      </div>
+    </section>
+
+    <p class="notes" id="notes">
+      Each tick either commits to a future round or reveals that round's block
+      seed — a public randomness anchor nobody could have known at commit
+      time. Once deployed, state is read from the app's global state on the
+      TestNet indexer; the chain is the source of truth. Contract:
+      <a href="https://github.com/corvid-agent/arcron-beacon/blob/main/smart_contracts/beacon/contract.py">smart_contracts/beacon/contract.py</a>.
+    </p>
+
+    <footer class="foot">Unaudited. TestNet only. Not deployed. Read-only, no wallet.</footer>
+  </main>
+  <script src="./app.js"></script>
+</body>
+</html>
