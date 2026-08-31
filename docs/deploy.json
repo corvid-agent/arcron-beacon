@@ -1,6 +1,8 @@
 {
-  "appId": 0,
+  "appId": 770742777,
   "network": "testnet",
   "keeperAppId": 769891898,
-  "notes": "not deployed"
+  "upkeepId": 112,
+  "interval": 1700,
+  "notes": "deployed — commit-reveal beacon, publish() via arcron keeper, upkeep #112"
 }
