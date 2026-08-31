@@ -3,8 +3,8 @@
 A **verifiable-randomness beacon** on Algorand TestNet, ticked by
 [Arcron](https://github.com/CorvidLabs/arcron) keepers.
 
-**Unaudited. TestNet only. Not deployed (appId = 0).** Deploy needs a
-human's explicit go — see issue #1.
+**Unaudited. TestNet only. Live: app `770742777`, Arcron upkeep `#112`,
+delay 800 rounds, cadence 1,700 rounds (~80 min).**
 
 ## What it does
 
@@ -39,7 +39,8 @@ must land inside the 900-round `STALE_MARGIN`. In numbers:
 the 1000-round seed window is a hard ceiling no contract setting can
 raise. A keeper slower than `delay + 900` would hit the stale-commitment
 path on every call: each call succeeds and gets paid while nothing ever
-reveals. Pick the upkeep interval accordingly (see issue #2).
+reveals. The live deployment runs at the widest possible cadence:
+delay 800, interval 1,700 = 800 + 900.
 
 ## The traps this contract avoids
 
@@ -67,21 +68,33 @@ in the Arcron repo first. In short:
 ```
 smart_contracts/beacon/contract.py   the Puya (Algorand Python) source — the whole thing
 tests/test_beacon.py                 algorand-python-testing unit tests (mock chain)
-docs/                                GitHub Pages split-flap board (NOT DEPLOYED until appId > 0)
-docs/deploy.json                     {"appId": 0, ...} — the board's single source of config
+docs/                                GitHub Pages split-flap board
+docs/deploy.json                     live config — appId 770742777, upkeepId 112
 ```
 
 Source-only on purpose: no compiled artifacts are committed. They are
-generated at deploy time by the human doing the deploy.
+generated at deploy time from this source.
 
-**Pending:** the GitHub Pages publish workflow is not committed yet — the
-token that wrote this repo lacks the `workflow` scope. Add
-`.github/workflows/pages.yml` copied from
-[corvid-agent/plod](https://github.com/corvid-agent/plod/blob/main/.github/workflows/pages.yml)
-when a suitably-scoped credential is available (see issue #1). A compile
-CI (pip install puyapy==5.10.1 + `puyapy smart_contracts/beacon/contract.py`
-+ `pytest tests/`) is equally welcome; the commands below are exactly what
-it should run.
+## Deployment record (TestNet, 2026-08-31)
+
+Deployed by corvid-agent under the operator's go-ahead, in the documented
+order (deploy → set_keeper → set_delay → register):
+
+1. Create (zero create args): tx
+   `JX6AMEAKR66MG5KWSEZLYHWCQSSXNPUHWIOA2TXEZALQPBVBONQA` (round 66835422)
+   → **app 770742777**.
+2. `set_keeper(769891898)`: tx
+   `IOH5LDBSRT22JBAWDU6PHYHGR4TCBAI4XZFDITTRQQIK37AOYSVQ`.
+3. `set_delay(800)`: tx
+   `UQ4QENEMSF5ACEJTJ7YBYBGOHPPSNG7ZROSDS2UXOXRDEXZUJMPQ` — the maximum
+   delay, so the cadence invariant allows the widest upkeep interval.
+4. Registered on keeper `769891898`: **upkeep #112**, `publish()`,
+   interval **1,700 rounds** = delay 800 + seed margin 900, fee 4,000
+   µALGO, SKIP_AHEAD, 0.5 ALGO escrow: group
+   `QEQS76FPAUQ2B7X3KOFWDBWLGL63WRC3VGODC5NTF2OATEZUKPZQ` (app-call
+   `RUT7RTPTJXINIPNHNOR55LKZJLOVNQK4HNZ6XYTVB4EMD5R4YRMQ`, round 66835537;
+   first execution due ~round 66837237).
+5. `docs/deploy.json` flipped — the board reads live state.
 
 ## Build & test locally
 
@@ -94,41 +107,22 @@ python -m pytest tests/                      # mock-chain unit tests
 Verified at authoring time: compiles clean on puyapy 5.10.1; 11/11 unit
 tests pass (including a full plan→reveal cycle driven at the documented
 maximum cadence, and a boundary test proving the stale-replan path fires
-only once the seed window genuinely expires). Mock tests cannot prove
-keeper integration (inner calls, MBR) — that belongs to a LocalNet/TestNet
-e2e at deploy time.
-
-## How a human deploys this later
-
-**TestNet only. Never commit a mnemonic. Never deploy without the human go
-(issue #1).**
-
-1. Fund a throwaway TestNet account (dispenser). The address may be
-   documented; the mnemonic lives in env/CI secrets, never in git.
-2. Compile: `puyapy smart_contracts/beacon/contract.py`.
-3. Deploy the app with **zero create args**. Record the app id.
-4. Call `set_keeper` with the Arcron TestNet keeper app **769891898**
-   (creator-only, one-time).
-5. Optionally call `set_delay` (creator-only, one-time, 1–800 rounds) if
-   the default 20-round plan delay is too short for the intended cadence.
-   Do this *before* registering the upkeep.
-6. Register an upkeep on keeper 769891898 pointing at `publish()`
-   (see issue #2; pick `SKIP_AHEAD` deliberately, not the zero default).
-   **The interval must be ≤ `delay + 900` rounds** — with the default
-   delay that is ≤ 920 rounds (~43 min); see the cadence invariant above.
-   Order matters: deploy → `set_keeper` → `set_delay` → register, because
-   `publish` hard-asserts until the keeper is set.
-7. Set `"appId"` in `docs/deploy.json` — the board lights up on its own
-   (issue #3).
+only once the seed window genuinely expires).
 
 ## The board
 
 `docs/` is a split-flap/CRT status board in the spirit of
 [corvid-agent/plod](https://github.com/corvid-agent/plod). While
-`appId` is 0 it shows **NOT DEPLOYED**. Once `appId > 0` it reads the
+`appId` is 0 it shows **NOT DEPLOYED**; with the live id set it reads the
 app's global state from the public indexer
 (`https://testnet-idx.algonode.cloud`) and flaps out the latest revealed
 round, its seed, the pending target, and total reveals. Read-only, no
 wallet, no keys.
 
-Unaudited. TestNet only. Not deployed.
+**Publish pending:** Pages from `docs/` needs enabling in repo settings, and
+the token that wrote this repo lacks the `workflow` scope for
+`.github/workflows/pages.yml` (copy it from
+[corvid-agent/plod](https://github.com/corvid-agent/plod/blob/main/.github/workflows/pages.yml)
+when a suitably-scoped credential is available).
+
+Unaudited. TestNet only. Live as app 770742777.
