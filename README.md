@@ -11,8 +11,9 @@ human's explicit go — see issue #1.
 An Arcron keeper calls `publish()` on a schedule. The hook alternates two
 phases, driven entirely by the contract's own state:
 
-1. **PLAN** — commit to a round `DELAY_ROUNDS` (20, ~1 minute) in the
-   future and store it.
+1. **PLAN** — commit to a round `delay` in the future (default
+   `DELAY_ROUNDS` = 20, ~1 minute; creator-configurable once via
+   `set_delay`, up to `MAX_DELAY` = 800) and store it.
 2. **REVEAL** — once that round has passed, read its block seed
    (`Block.blk_seed`, the round's VRF seed) and publish it to global state.
 
@@ -21,6 +22,24 @@ so each reveal is a public, unpredictable randomness anchor. **Rain-style
 draws are the audience**: a draw contract fixes a beacon round at draw
 time and resolves against the revealed seed later — no oracle, no trust,
 anyone can verify the seed came from the named round.
+
+## The cadence invariant
+
+**Keeper cadence must satisfy `cadence ≤ delay + 900` rounds.** The AVM
+reads block seeds at most 1000 rounds back, and the reveal fires on the
+first keeper call after the target — `cadence − delay` rounds late — so it
+must land inside the 900-round `STALE_MARGIN`. In numbers:
+
+| plan delay            | max keeper cadence | ≈ wall time |
+| --------------------- | ------------------ | ----------- |
+| 20 (default)          | 920 rounds         | ~43 min     |
+| 800 (`MAX_DELAY`)     | 1,700 rounds       | ~80 min     |
+
+**Longer cadences (hourly, daily, weekly) are impossible by AVM design** —
+the 1000-round seed window is a hard ceiling no contract setting can
+raise. A keeper slower than `delay + 900` would hit the stale-commitment
+path on every call: each call succeeds and gets paid while nothing ever
+reveals. Pick the upkeep interval accordingly (see issue #2).
 
 ## The traps this contract avoids
 
@@ -41,7 +60,7 @@ in the Arcron repo first. In short:
 - **Zero uint64 create args.** A create_arg of type uint64 is how a sloppy
   deploy script confuses the keeper app id with a cadence and locks an
   interval at ~68 years. `create()` takes nothing; the keeper is named
-  once via `set_keeper`.
+  once via `set_keeper`, the plan delay once via `set_delay`.
 
 ## Layout
 
@@ -72,9 +91,12 @@ puyapy smart_contracts/beacon/contract.py   # compile check (artifacts not commi
 python -m pytest tests/                      # mock-chain unit tests
 ```
 
-Verified at authoring time: compiles clean on puyapy 5.10.1; 5/5 unit
-tests pass. Mock tests cannot prove keeper integration (inner calls, MBR)
-— that belongs to a LocalNet/TestNet e2e at deploy time.
+Verified at authoring time: compiles clean on puyapy 5.10.1; 11/11 unit
+tests pass (including a full plan→reveal cycle driven at the documented
+maximum cadence, and a boundary test proving the stale-replan path fires
+only once the seed window genuinely expires). Mock tests cannot prove
+keeper integration (inner calls, MBR) — that belongs to a LocalNet/TestNet
+e2e at deploy time.
 
 ## How a human deploys this later
 
@@ -87,9 +109,16 @@ tests pass. Mock tests cannot prove keeper integration (inner calls, MBR)
 3. Deploy the app with **zero create args**. Record the app id.
 4. Call `set_keeper` with the Arcron TestNet keeper app **769891898**
    (creator-only, one-time).
-5. Register an upkeep on keeper 769891898 pointing at `publish()`
+5. Optionally call `set_delay` (creator-only, one-time, 1–800 rounds) if
+   the default 20-round plan delay is too short for the intended cadence.
+   Do this *before* registering the upkeep.
+6. Register an upkeep on keeper 769891898 pointing at `publish()`
    (see issue #2; pick `SKIP_AHEAD` deliberately, not the zero default).
-6. Set `"appId"` in `docs/deploy.json` — the board lights up on its own
+   **The interval must be ≤ `delay + 900` rounds** — with the default
+   delay that is ≤ 920 rounds (~43 min); see the cadence invariant above.
+   Order matters: deploy → `set_keeper` → `set_delay` → register, because
+   `publish` hard-asserts until the keeper is set.
+7. Set `"appId"` in `docs/deploy.json` — the board lights up on its own
    (issue #3).
 
 ## The board
